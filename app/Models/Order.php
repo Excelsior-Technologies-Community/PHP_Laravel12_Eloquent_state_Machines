@@ -3,33 +3,32 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\OrderStatusHistory;
 
 class Order extends Model
 {
     protected $fillable = ['name', 'status'];
 
-    // Ensure new orders default to 'pending'
     protected $attributes = [
         'status' => 'pending',
     ];
 
-    // Define allowed transitions
+   
     protected static array $allowedTransitions = [
         'pending'    => ['processing', 'canceled'],
         'processing' => ['complete', 'canceled'],
         'complete'   => [],
-        'canceled'   => [],
+        'canceled'   => ['pending'], 
     ];
 
-    /**
-     * Transition the order to a new status.
-     *
-     * @param string $newStatus
-     * @return bool
-     */
-    public function transition(string $newStatus): bool
+    public function histories()
     {
-        $currentStatus = $this->status ?? 'pending'; // ✅ handle null safely
+        return $this->hasMany(OrderStatusHistory::class);
+    }
+
+    public function transition(string $newStatus, string $role = 'user'): bool
+    {
+        $currentStatus = $this->status ?? 'pending';
 
         if (!isset(self::$allowedTransitions[$currentStatus])) {
             throw new \Exception("Invalid current status: {$currentStatus}");
@@ -39,11 +38,20 @@ class Order extends Model
             throw new \Exception("Cannot transition from {$currentStatus} to {$newStatus}");
         }
 
+        // Role restriction
+        if ($role === 'user' && $currentStatus === 'processing' && $newStatus === 'canceled') {
+            throw new \Exception("Users cannot cancel after processing");
+        }
+
+        $oldStatus = $currentStatus;
+
         $this->status = $newStatus;
         $this->save();
 
-        // Optional: log transition
-        \Log::info("Order #{$this->id} transitioned from {$currentStatus} to {$newStatus}");
+        $this->histories()->create([
+            'from_status' => $oldStatus,
+            'to_status'   => $newStatus,
+        ]);
 
         return true;
     }
