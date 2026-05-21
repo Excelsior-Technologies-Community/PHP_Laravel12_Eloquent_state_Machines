@@ -4,16 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\OrderStatusHistory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Order extends Model
 {
-    protected $fillable = ['name', 'status'];
+    use HasFactory;
+    
+    protected $fillable = ['name', 'status', 'description', 'amount'];
 
     protected $attributes = [
         'status' => 'pending',
     ];
 
-   
     protected static array $allowedTransitions = [
         'pending'    => ['processing', 'canceled'],
         'processing' => ['complete', 'canceled'],
@@ -23,7 +25,7 @@ class Order extends Model
 
     public function histories()
     {
-        return $this->hasMany(OrderStatusHistory::class);
+        return $this->hasMany(OrderStatusHistory::class)->orderBy('created_at', 'desc');
     }
 
     public function transition(string $newStatus, string $role = 'user'): bool
@@ -54,5 +56,25 @@ class Order extends Model
         ]);
 
         return true;
+    }
+
+    public function getStatusColorAttribute(): string
+    {
+        return [
+            'pending' => 'yellow',
+            'processing' => 'blue',
+            'complete' => 'green',
+            'canceled' => 'red',
+        ][$this->status] ?? 'gray';
+    }
+
+    public function getStatusBadgeClassAttribute(): string
+    {
+        return [
+            'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
+            'processing' => 'bg-blue-100 text-blue-800 border-blue-200',
+            'complete' => 'bg-green-100 text-green-800 border-green-200',
+            'canceled' => 'bg-red-100 text-red-800 border-red-200',
+        ][$this->status] ?? 'bg-gray-100 text-gray-800';
     }
 }
