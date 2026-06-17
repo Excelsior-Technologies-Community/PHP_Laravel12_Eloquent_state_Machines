@@ -6,21 +6,31 @@
     <title>Order Details - {{ $order->name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        }
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        }
+    </script>
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
 
     <div class="container mx-auto px-4 py-8 max-w-4xl">
         
-        <!-- Back Button -->
-        <div class="mb-6">
-            <a href="/?role={{ $role }}" class="inline-flex items-center gap-2 text-gray-600 hover:text-indigo-500 transition-colors">
+        <div class="flex justify-between items-center mb-6">
+            <a href="/?role={{ $role }}" class="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-indigo-500 transition-colors">
                 <i class="ri-arrow-left-line"></i> Back to Orders
             </a>
+            <button onclick="toggleDarkMode()" class="p-2 bg-gray-200 dark:bg-gray-800 rounded-lg text-gray-800 dark:text-gray-200">
+                <i class="ri-moon-line dark:ri-sun-line"></i>
+            </button>
         </div>
 
-        <!-- Order Details Card -->
-        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <!-- Header -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden transition-colors">
             <div class="bg-gradient-to-r from-indigo-500 to-purple-500 p-6 text-white">
                 <div class="flex justify-between items-start">
                     <div>
@@ -37,93 +47,54 @@
                 </div>
             </div>
             
-            <!-- Body -->
             <div class="p-6">
-                <!-- Order Information -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     @if($order->description)
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <h3 class="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                             Description
-                        </h3>
-                        <p class="text-gray-600">{{ $order->description }}</p>
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <h3 class="font-semibold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">Description</h3>
+                        <p class="text-gray-600 dark:text-gray-400">{{ $order->description }}</p>
                     </div>
                     @endif
                     
                     @if($order->amount)
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <h3 class="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                            Amount
-                        </h3>
-                        <p class="text-2xl font-bold text-indigo-600">{{ number_format($order->amount, 2) }}</p>
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <h3 class="font-semibold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">Amount</h3>
+                        <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{{ number_format($order->amount, 2) }}</p>
                     </div>
                     @endif
                 </div>
 
-                <!-- Status Actions -->
-                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <h3 class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                         Update Status
-                    </h3>
+                <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <h3 class="font-semibold text-gray-700 dark:text-gray-200 mb-3">Update Status</h3>
                     <div class="flex flex-wrap gap-3">
                         @foreach($allowedTransitions[$order->status] ?? [] as $nextStatus)
                             @if(!($role === 'user' && $order->status === 'processing' && $nextStatus === 'canceled'))
                                 <a href="{{ route('order.transition', [$order->id, $nextStatus]) }}?role={{ $role }}"
-                                   class="px-5 py-2 rounded-lg font-semibold transition-all transform hover:scale-105
-                                   @if($nextStatus == 'processing') bg-blue-500 hover:bg-blue-600 text-white shadow-md
-                                   @elseif($nextStatus == 'complete') bg-green-500 hover:bg-green-600 text-white shadow-md
-                                   @elseif($nextStatus == 'canceled') bg-red-500 hover:bg-red-600 text-white shadow-md
-                                   @elseif($nextStatus == 'pending') bg-yellow-500 hover:bg-yellow-600 text-white shadow-md
-                                   @endif">
-                                    {{ ($nextStatus == 'pending' && $order->status == 'canceled') ? 'Reorder' : ucfirst($nextStatus) }}
+                                   class="px-5 py-2 rounded-lg font-semibold transition-all hover:scale-105 {{ $order->status_badge_class }}">
+                                    {{ ucfirst($nextStatus) }}
                                 </a>
                             @endif
                         @endforeach
-                        @if(count($allowedTransitions[$order->status] ?? []) == 0)
-                            <span class="text-gray-500 italic">No further transitions available</span>
-                        @endif
                     </div>
                 </div>
 
-                <!-- History Timeline -->
                 <div>
-                    <h3 class="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                         Status History
-                    </h3>
-                    
-                    @if($order->histories->count() > 0)
-                        <div class="space-y-3">
-                            @foreach($order->histories as $history)
-                                <div class="flex items-start gap-3">
-                                    <div class="flex-shrink-0">
-                                        <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                           
-                                        </div>
-                                    </div>
-                                    <div class="flex-grow bg-gray-50 rounded-lg p-3">
-                                        <div class="flex justify-between items-start">
-                                            <div>
-                                                <span class="font-medium text-gray-800">{{ ucfirst($history->from_status) }}</span>
-                                              
-                                                <span class="font-medium text-gray-800">{{ ucfirst($history->to_status) }}</span>
-                                            </div>
-                                            <span class="text-xs text-gray-400">{{ $history->created_at->diffForHumans() }}</span>
-                                        </div>
-                                        <p class="text-xs text-gray-500 mt-1">{{ $history->created_at->format('F j, Y, g:i a') }}</p>
+                    <h3 class="font-semibold text-gray-700 dark:text-gray-200 mb-4">Status History</h3>
+                    <div class="space-y-3">
+                        @foreach($order->histories as $history)
+                            <div class="flex items-start gap-3 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                                <div class="flex-grow">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-medium text-gray-800 dark:text-white">{{ ucfirst($history->from_status) }} → {{ ucfirst($history->to_status) }}</span>
+                                        <span class="text-xs text-gray-400">{{ $history->created_at->diffForHumans() }}</span>
                                     </div>
                                 </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="text-center py-8 bg-gray-50 rounded-lg">
-                            <i class="ri-information-line text-4xl text-gray-300"></i>
-                            <p class="text-gray-400 mt-2">No history recorded yet</p>
-                        </div>
-                    @endif
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
 </body>
 </html>

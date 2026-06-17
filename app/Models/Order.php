@@ -5,12 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\OrderStatusHistory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Notifications\OrderStatusChanged;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Order extends Model
 {
     use HasFactory;
-    
-    protected $fillable = ['name', 'status', 'description', 'amount'];
+
+    protected $fillable = ['name', 'status', 'description', 'amount', 'user_id'];
 
     protected $attributes = [
         'status' => 'pending',
@@ -28,6 +30,11 @@ class Order extends Model
         return $this->hasMany(OrderStatusHistory::class)->orderBy('created_at', 'desc');
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function transition(string $newStatus, string $role = 'user'): bool
     {
         $currentStatus = $this->status ?? 'pending';
@@ -40,7 +47,10 @@ class Order extends Model
             throw new \Exception("Cannot transition from {$currentStatus} to {$newStatus}");
         }
 
-        // Role restriction
+        if ($currentStatus === 'pending' && $newStatus === 'complete') {
+            throw new \Exception("Cannot skip steps: Pending to Complete is not allowed.");
+        }
+
         if ($role === 'user' && $currentStatus === 'processing' && $newStatus === 'canceled') {
             throw new \Exception("Users cannot cancel after processing");
         }
@@ -49,6 +59,10 @@ class Order extends Model
 
         $this->status = $newStatus;
         $this->save();
+
+        if ($this->user) {
+            $this->user->notify(new OrderStatusChanged($this));
+        }
 
         $this->histories()->create([
             'from_status' => $oldStatus,
