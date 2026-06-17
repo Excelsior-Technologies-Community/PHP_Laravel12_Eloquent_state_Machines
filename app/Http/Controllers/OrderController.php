@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\OrdersExport;
 
 class OrderController extends Controller
 {
@@ -144,6 +146,11 @@ class OrderController extends Controller
         }
 
         return redirect()->route('home')->with('success', $message);
+    }
+
+    public function export()
+    {
+        return Excel::download(new OrdersExport, 'orders_report.xlsx');
     }
 
     public function destroy($id)

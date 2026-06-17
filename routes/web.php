@@ -5,6 +5,7 @@ use App\Http\Controllers\OrderController;
 
 // Order routes
 Route::get('/', [OrderController::class, 'index'])->name('home');
+Route::get('/orders/export', [OrderController::class, 'export'])->name('orders.export');
 Route::get('/order/{id}/transition/{status}', [OrderController::class, 'transition'])->name('order.transition');
 Route::get('/order/{id}', [OrderController::class, 'show'])->name('orders.show');
 Route::get('/orders/create', [OrderController::class, 'create'])->name('orders.create');
